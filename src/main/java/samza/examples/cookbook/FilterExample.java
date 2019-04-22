@@ -26,9 +26,12 @@ import org.apache.samza.operators.OutputStream;
 import org.apache.samza.serializers.JsonSerdeV2;
 import org.apache.samza.serializers.KVSerde;
 import org.apache.samza.serializers.StringSerde;
+import org.apache.samza.system.descriptors.GenericSystemDescriptor;
 import org.apache.samza.system.kafka.descriptors.KafkaInputDescriptor;
 import org.apache.samza.system.kafka.descriptors.KafkaOutputDescriptor;
 import org.apache.samza.system.kafka.descriptors.KafkaSystemDescriptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -67,14 +70,13 @@ import java.util.Map;
  * </ol>
  */
 public class FilterExample implements StreamApplication {
+  private static final Logger LOGGER = LoggerFactory.getLogger(FilterExample.class);
   private static final String KAFKA_SYSTEM_NAME = "kafka";
   private static final List<String> KAFKA_CONSUMER_ZK_CONNECT = ImmutableList.of("localhost:2181");
   private static final List<String> KAFKA_PRODUCER_BOOTSTRAP_SERVERS = ImmutableList.of("localhost:9092");
   private static final Map<String, String> KAFKA_DEFAULT_STREAM_CONFIGS = ImmutableMap.of("replication.factor", "1");
 
   private static final String INPUT_STREAM_ID = "pageview-filter-input";
-  private static final String OUTPUT_STREAM_ID = "pageview-filter-output";
-  private static final String INVALID_USER_ID = "invalidUserId";
 
   @Override
   public void describe(StreamApplicationDescriptor appDescriptor) {
@@ -82,20 +84,22 @@ public class FilterExample implements StreamApplication {
         .withConsumerZkConnect(KAFKA_CONSUMER_ZK_CONNECT)
         .withProducerBootstrapServers(KAFKA_PRODUCER_BOOTSTRAP_SERVERS)
         .withDefaultStreamConfigs(KAFKA_DEFAULT_STREAM_CONFIGS);
+    appDescriptor.withDefaultSystem(kafkaSystemDescriptor);
 
     KVSerde<String, PageView> serde = KVSerde.of(new StringSerde(), new JsonSerdeV2<>(PageView.class));
     KafkaInputDescriptor<KV<String, PageView>> inputDescriptor =
         kafkaSystemDescriptor.getInputDescriptor(INPUT_STREAM_ID, serde);
-    KafkaOutputDescriptor<KV<String, PageView>> outputDescriptor =
-        kafkaSystemDescriptor.getOutputDescriptor(OUTPUT_STREAM_ID, serde);
-
-    appDescriptor.withDefaultSystem(kafkaSystemDescriptor);
-
     MessageStream<KV<String, PageView>> pageViews = appDescriptor.getInputStream(inputDescriptor);
-    OutputStream<KV<String, PageView>> filteredPageViews = appDescriptor.getOutputStream(outputDescriptor);
 
     pageViews
-        .filter(kv -> !INVALID_USER_ID.equals(kv.value.userId))
-        .sendTo(filteredPageViews);
+        .map(kv -> {
+          LOGGER.trace("Received input message with key: {} value: {}", kv.key, kv.value);
+          return kv;
+        })
+        .partitionBy(kv -> kv.value.userId, kv -> kv.value, serde, "p2p")
+        .map(kv -> {
+          LOGGER.info("Received repartitioned message with key: {} value: {}", kv.key, kv.value);
+          return kv;
+        });
   }
 }

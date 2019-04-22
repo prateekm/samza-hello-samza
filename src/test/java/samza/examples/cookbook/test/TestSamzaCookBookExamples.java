@@ -46,30 +46,6 @@ import static samza.examples.cookbook.StreamTableJoinExample.EnrichedPageView;
 
 public class TestSamzaCookBookExamples {
   @Test
-  public void testFilterExample() {
-    List<PageView> rawPageViewEvents = new ArrayList<>();
-    rawPageViewEvents.add(new PageView("google.com", "user1", "india"));
-    rawPageViewEvents.add(new PageView("facebook.com", "invalidUserId", "france"));
-    rawPageViewEvents.add(new PageView("yahoo.com", "user2", "china"));
-
-    InMemorySystemDescriptor inMemorySystem = new InMemorySystemDescriptor("kafka");
-
-    InMemoryInputDescriptor<PageView> badPageViewEvents =
-        inMemorySystem.getInputDescriptor("pageview-filter-input", new NoOpSerde<PageView>());
-
-    InMemoryOutputDescriptor<PageView> goodPageViewEvents =
-        inMemorySystem.getOutputDescriptor("pageview-filter-output", new NoOpSerde<PageView>());
-
-    TestRunner
-        .of(new FilterExample())
-        .addInputStream(badPageViewEvents, rawPageViewEvents)
-        .addOutputStream(goodPageViewEvents, 1)
-        .run(Duration.ofMillis(1500));
-
-    Assert.assertEquals(TestRunner.consumeStream(goodPageViewEvents, Duration.ofMillis(1000)).get(0).size(), 2);
-  }
-
-  @Test
   public void testJoinExample() {
     List<PageView> pageViewEvents = new ArrayList<>();
     pageViewEvents.add(new PageView("google.com", "user1", "india"));

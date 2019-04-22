@@ -44,6 +44,12 @@
     <level value="info" />
     <appender-ref ref="StartupAppender"/>
   </logger>
+  <logger name="org.apache.kafka">
+    <level value="off" />
+  </logger>
+    <logger name="org.apache.samza.system.p2p">
+        <level value="INFO" />
+    </logger>
   <root>
     <priority value="info" />
     <appender-ref ref="RollingAppender"/>
