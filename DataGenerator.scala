@@ -22,10 +22,10 @@ object DataGenerator {
   val Random = new java.util.Random()
 
   def main(args: Array[String]): Unit = {
-    while (true) {
+    var i = 0
+    while (i < 10000000) {
       val userId = Math.abs(Random.nextInt());
       println(s"""{\"userId\": \"user$userId\", \"country\": \"india\", \"pageId\":\"yahoo.com\"}""")
-      Thread.sleep(1)
     }
   }
 }
